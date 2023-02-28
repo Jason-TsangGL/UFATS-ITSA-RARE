@@ -1,0 +1,90 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def correction(SegmentedFatROI,ROIArray):\n",
+    "    print('Muscle Segmentation')\n",
+    "    plt.hist(np.where(ROIArray[1] !=0,ROIArray[1],np.nan))\n",
+    "    plt.show()\n",
+    "    print('Fat Segmentation')\n",
+    "    plt.hist(np.where(SegmentedFatROI[1] !=0,SegmentedFatROI[1],np.nan))\n",
+    "    plt.show()\n",
+    "    \n",
+    "    musclemean=np.nanmean(np.where(ROIArray !=0,ROIArray,np.nan))\n",
+    "    musclestd=np.nanstd(np.where(ROIArray !=0,ROIArray,np.nan))\n",
+    "    print(\"mean\")\n",
+    "    print(musclemean)\n",
+    "    print(\"standard dev\")\n",
+    "    print(musclestd)\n",
+    "\n",
+    "    MUSCLETHRES = int(musclemean+(2*musclestd))\n",
+    "    print('Muscle Threshold')\n",
+    "    print(MUSCLETHRES)\n",
+    "    fatseg2 = np.where(SegmentedFatROI > MUSCLETHRES, SegmentedFatROI, 0) \n",
+    "    \n",
+    "    print(\"before\")\n",
+    "    plt.imshow(SegmentedFatROI[1],cmap='bone',vmin=0,vmax=256)\n",
+    "    plt.show()\n",
+    "    print(\"after\")\n",
+    "    plt.imshow(fatseg2[1],cmap='bone',vmin=0,vmax=256)\n",
+    "    plt.show()\n",
+    "    fatseg2\n",
+    "    \n",
+    "    return fatseg2"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "2009\n"
+     ]
+    }
+   ],
+   "source": [
+    "from IPython.display import clear_output\n",
+    "for i in range (0,2010,15):\n",
+    "    for x in range (0,15,1):\n",
+    "        clear_output(wait=True)\n",
+    "        print(i+x)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

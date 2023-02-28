@@ -1,0 +1,353 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "import numpy as np\n",
+    "import SimpleITK as sitk\n",
+    "import os as os\n",
+    "import nrrd as reader\n",
+    "#from sklearn.preprocessing import Normalizer\n",
+    "import cv2  \n",
+    "from skimage import morphology\n",
+    "from skimage.measure import label\n",
+    "from skimage.segmentation import active_contour\n",
+    "from skimage import data, io, img_as_ubyte,filters\n",
+    "\n",
+    "j = 5"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def join(one, two):\n",
+    "    return os.path.join(one, two)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def check_path(path):\n",
+    "    count=0\n",
+    "    for files in sorted(os.listdir(path)):\n",
+    "        image_path = os.path.join(path,files)\n",
+    "        count+=1\n",
+    "    return count"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# (patient count* 15) check_path function will return total patient count \n",
+    "folder_path = join(os.getcwd(), \"dataset\")\n",
+    "test_path = join(os.getcwd(),\"Test\")\n",
+    "length = check_path(folder_path)\n",
+    "inputs = np.zeros((length*15,256,256, 1))\n",
+    "inputsFLE = np.zeros((length*15,256,256, 1))\n",
+    "outputs = np.zeros((length*15,256,256 , 1))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Inhomogeneity Correction\n",
+    "def correct_roi(image):\n",
+    "    inputImage=sitk.GetImageFromArray(image)\n",
+    "    inputImage = sitk.Cast(inputImage, sitk.sitkFloat32 )\n",
+    "    corrector = sitk.N4BiasFieldCorrectionImageFilter()\n",
+    "    output = corrector.Execute( inputImage)\n",
+    "    image_c= sitk.GetArrayFromImage(output)\n",
+    "    image_c=cv2.normalize(src=image_c, dst=None, alpha=0.0, beta=255.0, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U) #need to normalize, not direct conversion by \"np.uint8\"\n",
+    "    return image_c"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def dcm_to_np(path):\n",
+    "    global dic_count\n",
+    "    try:\n",
+    "        slice_filenames = sitk.ImageSeriesReader_GetGDCMSeriesFileNames(path)\n",
+    "        image = sitk.ReadImage(slice_filenames)\n",
+    "        for x in range(15):\n",
+    "            current_slice = image[:, :, x]\n",
+    "            current_array = sitk.GetArrayFromImage(current_slice)\n",
+    "            split_array = current_array[:,:-256]\n",
+    "            inputs[dic_count] = split_array[:, :, np.newaxis]\n",
+    "            dic_count+=1\n",
+    "        print(dic_count)\n",
+    "    except Exception as e:\n",
+    "        print(e)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def nrrd_to_np(meta_object,path):\n",
+    "    global ann_count\n",
+    "    try:\n",
+    "        data = sitk.GetArrayFromImage(meta_object)\n",
+    "        for p in range(15):\n",
+    "            current_seg = data[p, :, :]\n",
+    "            black = np.zeros([256, 256, 1])\n",
+    "            for y, a in enumerate(current_seg):\n",
+    "                for x, b in enumerate(a):\n",
+    "                    if b>0:\n",
+    "                        black[y][x][b-1] = 1\n",
+    "            mskoutputs[ann_count] = black\n",
+    "            ann_count+=1\n",
+    "        print(ann_count)\n",
+    "    except Exception as e:\n",
+    "        print(e)\n",
+    "        print(path)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def fle_to_np(meta_object,path):\n",
+    "    global ann_count\n",
+    "    try:\n",
+    "        data = sitk.GetArrayFromImage(meta_object)\n",
+    "        for p in range(15):\n",
+    "            fleoutputs[ann_count] = np.expand_dims(np.where(data[p, :, :256] == 1, 1, 0), axis=2)\n",
+    "            ann_count+=1\n",
+    "        print(ann_count)\n",
+    "    except Exception as e:\n",
+    "        print(e)\n",
+    "        print(path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "15\n",
+      "30\n",
+      "45\n",
+      "60\n",
+      "75\n",
+      "90\n",
+      "105\n",
+      "120\n",
+      "135\n",
+      "150\n",
+      "165\n",
+      "180\n",
+      "195\n",
+      "210\n",
+      "225\n",
+      "240\n",
+      "255\n",
+      "270\n",
+      "285\n",
+      "300\n",
+      "315\n",
+      "330\n",
+      "345\n",
+      "360\n",
+      "375\n",
+      "390\n",
+      "405\n",
+      "420\n",
+      "435\n",
+      "450\n",
+      "465\n",
+      "480\n",
+      "495\n",
+      "510\n",
+      "525\n",
+      "540\n",
+      "555\n",
+      "570\n",
+      "585\n",
+      "600\n",
+      "615\n",
+      "630\n",
+      "645\n",
+      "660\n",
+      "675\n",
+      "690\n",
+      "705\n",
+      "720\n",
+      "735\n",
+      "750\n",
+      "765\n",
+      "780\n",
+      "795\n",
+      "810\n",
+      "825\n",
+      "840\n",
+      "855\n",
+      "870\n",
+      "885\n",
+      "900\n",
+      "915\n",
+      "930\n",
+      "945\n",
+      "960\n",
+      "975\n",
+      "990\n",
+      "1005\n",
+      "1020\n",
+      "1035\n",
+      "1050\n",
+      "1065\n",
+      "1080\n",
+      "1095\n",
+      "1110\n",
+      "1125\n",
+      "1140\n",
+      "1155\n",
+      "1170\n",
+      "1185\n",
+      "1200\n",
+      "1215\n",
+      "1230\n",
+      "1245\n",
+      "1260\n",
+      "1275\n",
+      "1290\n",
+      "1305\n",
+      "1320\n",
+      "1335\n",
+      "1350\n",
+      "1365\n",
+      "1380\n",
+      "1395\n",
+      "1410\n",
+      "1425\n",
+      "1440\n",
+      "1455\n",
+      "1470\n",
+      "1485\n",
+      "1500\n",
+      "1515\n",
+      "1530\n",
+      "1545\n",
+      "1560\n",
+      "1575\n",
+      "1590\n",
+      "1605\n",
+      "1620\n",
+      "1635\n",
+      "1650\n",
+      "1665\n",
+      "1680\n",
+      "1695\n",
+      "1710\n",
+      "1725\n",
+      "1740\n",
+      "1755\n",
+      "1770\n",
+      "1785\n",
+      "1800\n",
+      "1815\n",
+      "1830\n",
+      "1845\n",
+      "1860\n"
+     ]
+    }
+   ],
+   "source": [
+    "dic_count = 0\n",
+    "ann_count = 0\n",
+    "try:\n",
+    "    for patient in sorted(os.listdir(folder_path)):\n",
+    "        patient_path = join(folder_path, patient)\n",
+    "        fle_folder = join(patient_path, \"FLE\")\n",
+    "        for fle in os.listdir(fle_folder):\n",
+    "            if(\".nrrd\" in fle):\n",
+    "                flesegmentation = sitk.ReadImage(join(fle_folder, fle))\n",
+    "                nrrd_to_np(flesegmentation,fle)\n",
+    "                 \n",
+    "except Exception as e:\n",
+    "    print(e)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'plt' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mNameError\u001b[0m                                 Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-1-d7ce698960fd>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m      1\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mi\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mrange\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0;36m20\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 2\u001b[0;31m     \u001b[0mplt\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mimshow\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0moutputs\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mi\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0mvmin\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0mvmax\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;36m1\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      3\u001b[0m     \u001b[0mplt\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mshow\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      4\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mNameError\u001b[0m: name 'plt' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "for i in range (20):\n",
+    "    plt.imshow(outputs[i],vmin=0,vmax=1)\n",
+    "    plt.show()\n",
+    "    "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
