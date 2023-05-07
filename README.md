@@ -52,3 +52,6 @@ Figure 2. Graphical visualization of the evaluation metrics of the best performi
 
 Figure 3. Visual comparison of the original MR image, ground truth segmentations, and CNN generated segmentations compiled. Bottom row shows visual examples of individual muscle group segmentations from the CNN
 
+[CARC Poster.pdf](https://github.com/Jason-TsangGL/UFATS-ITSA-RARE/files/11416092/CARC.Poster.pdf)
+
+
