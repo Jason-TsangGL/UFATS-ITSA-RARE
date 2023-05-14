@@ -1,0 +1,6 @@
+
+DCM-SEG-MASK.npy
+DCM-FLE-MASK.npy
+NORM-DCM-ARRAY.npy
+npy-arrays/UFATSMUSCLEMASKCLEAN.npy
+*.npy
